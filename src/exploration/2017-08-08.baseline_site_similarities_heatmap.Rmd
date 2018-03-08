@@ -1,0 +1,126 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This Notebook plots a heatmap of the N most abundant OTUs, and labels samples by site 
+(and maybe aspiration status?)
+
+```{r}
+library(plyr)
+library(dplyr)
+```
+
+
+```{r}
+## Load in OTU table, metadata
+fnotu  <- '/Users/claire/github/aspiration-analysis/data/clean/rosen.otu_table.counts.clean'
+fnmeta <- '/Users/claire/github/aspiration-analysis/data/clean/rosen.metadata.clean'
+
+# Load in data
+otu <- read.csv(fnotu, sep='\t')
+# Rename "X" to "sample_id"
+colnames(otu) <- c('sample_id', colnames(otu)[c(2:length(colnames(otu)))])
+
+# Add 1 pseudo-count and convert to relative abundance
+otu_vals <- otu %>% select(-sample_id) %>% + 1
+otu <- cbind(sample_id=otu$sample_id, otu_vals/rowSums(otu_vals))
+# cbind renames the first column as otu$sample_id, need to fix
+colnames(otu) <- c('sample_id', colnames(otu)[c(2:length(colnames(otu)))])
+
+meta <- read.csv(fnmeta, sep='\t')
+colnames(meta) <- c('sample_id', colnames(meta)[c(2:length(colnames(meta)))])
+
+head(otu)
+head(meta)
+```
+
+```{r}
+# Subset data with aspiration metadata
+aspmeta <- meta %>% filter(mbs_consolidated %in% c('Aspiration/Penetration', 'Normal'))
+aspotu <- otu %>% filter(sample_id %in% aspmeta$sample_id)
+
+# Re-order rows in OTU table to match metadata - note I think this is already in the right order
+aspotu <- aspotu %>% slice(match(aspotu$sample_id, aspmeta$sample_id)) %>% select(-sample_id)
+
+# Re-order columns based on mean abundance
+col_order <- aspotu %>% colMeans() %>% order(decreasing=TRUE)
+aspotu <- aspotu %>% select(col_order)
+```
+
+```{r}
+library(RColorBrewer)
+library(gplots)
+
+## Heatmap of top N OTUs, automatic heatmap.2 clustering
+N <- 80
+colors <-
+   with(aspmeta,
+        data.frame(site = levels(site),
+                   site_color = I(brewer.pal(nlevels(site), name = 'Dark2'))))
+
+# merge aspmeta with colors to make a site_color columns
+aspmeta <- merge(aspmeta, colors)
+# Plot heatmap of relative abundances for topOTUs
+pal <- colorRampPalette(brewer.pal(9, "Blues"))(100)
+heatmap.2(log(data.matrix(aspotu[,c(1:N)])), col=pal, trace='none',
+          RowSideColors=aspmeta$site_color, symbreaks=FALSE)
+
+```
+
+```{r}
+# Okay, try adding in the beta diversity section: provide a sample-dendrogram
+# calculated on the beta diversity
+
+fnjsd  <- '/Users/claire/github/aspiration-analysis/data/analysis/jsd.wide.txt'
+jsd <- read.csv(fnjsd, sep = '\t')
+
+# Set sample row names
+rownames(jsd) <- jsd$X
+jsd <- jsd[,2:length(colnames(jsd))]
+
+# For some reason all the sample names start with X
+colnames(jsd) <- gsub('^X*','', colnames(jsd))
+# And also periods instead of dashes
+colnames(jsd) <- gsub('\\.','-', colnames(jsd))
+head(jsd)
+```
+
+```{r}
+## Cluster samples according to JSD matrix
+clust <- hclust(as.dist(jsd))
+```
+
+```{r}
+# Re-order rows in metadata to match sample order in JSD, after clustering 
+metaplot <- meta %>% slice(match(meta$sample_id, rownames(jsd)))
+metaplot <- metaplot[clust$order,]
+
+# Re-order rows in OTU table to match order in the JSD dataframe
+otuplot <- otu %>% slice(match(otu$sample_id, rownames(jsd))) %>% select(-sample_id)
+
+# Re-order columns based on mean abundance
+col_order <- otuplot %>% colMeans() %>% order(decreasing=TRUE)
+otuplot <- otuplot %>% select(col_order)
+```
+
+
+```{r}
+## Heatmap of top N OTUs, samples ordered by JSD clustering
+N <- 80
+colors <-
+   with(metaplot,
+        data.frame(site = levels(site),
+                   site_color = I(brewer.pal(nlevels(site), name = 'Dark2'))))
+
+# merge aspmeta with colors to make a site_color columns
+metaplot <- merge(metaplot, colors)
+
+# Plot heatmap of relative abundances for topOTUs
+pal <- colorRampPalette(brewer.pal(9, "Blues"))(100)
+heatmap.2(log(data.matrix(otuplot[,c(1:N)])), col=pal, trace='none',
+          RowSideColors=metaplot$site_color, symbreaks=FALSE,
+          Rowv=as.dendrogram(clust))
+
+```
+

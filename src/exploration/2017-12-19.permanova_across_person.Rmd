@@ -1,0 +1,148 @@
+---
+title: "2017-12-19.permanova_across_person"
+author: "Claire Duvallet"
+date: "12/19/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+The goal of this notebook is to use PERMANOVA and other similar analyses to answer "Are throats, lungs, and stomachs distinct communities? (i.e. is there a "lung" microbiome that is distinct from a "stomach" microbiome?)"
+
+Another way to pose this question is: "Each person gets a random stomach microbiome from a stomach metamicrobiome and a random lung microbiome from a lung metamicrobiome, and the stomach and lung metamicrobiomes are actually the same thing."
+
+Specifically, I want to know whether the throat, lung, and stomach metamicrobiomes have the same centroid and/or dispersions.
+
+My hypothesis is that the throat metamicrobiome will have a different centroid and dispersion (more tightly clustered), whereas the stomach and lung metamicrobiomes may not have different centroids or dispersions (not sure what to expect here). I expect the stomach and lung metamicrobiomes to have higher dispersion than the throat metamicrobiome.
+
+My plan is as follows:   
+
+- use permdisp on throat, lung, and stomach microbiomes to see whether they have different dispersions
+  - use some sort of post-hoc test to see which dispersions differ
+- run permanova to see whether stomach, lung, and stomach microbiomes have different centroids and dispersions
+  - use results from permdisp to infer which ones have different centroids alone or centroids and/or dispersions
+  - some sort of post-hoc test to see which centroids differ
+
+```{r, wkspace-setup, results='hide', message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+
+library(vegan)
+
+# to load metadata as feather format (read.table is not playing nice with pandas output...)
+library(feather)
+
+# project directory & data/results folders
+setwd("/Users/claire/github/aspiration-analysis/")
+datadir <- "/Users/claire/github/aspiration-analysis/data/"
+
+```
+First, I'll read in the pre-calculated beta diversity file. This one has the JSD between all samples pairs in the data, so we'll need to filter it.
+
+```{r, read-data}
+jsd <- read.table(paste0(datadir, "analysis/jsd.wide.txt"), sep="\t", header=TRUE)
+meta <- read_feather(paste0(datadir, "clean/rosen.metadata.clean.feather"))
+
+# Label rows in jsd dataframe
+rownames(jsd) <- jsd[, "X"]
+jsd <- jsd %>% select(-X)
+# Relabel columns to remove the "X" in front of sample IDs and replace periods with "-"
+colnames(jsd) <- gsub("^X", "",  colnames(jsd))
+colnames(jsd) <- gsub("\\.", "-", colnames(jsd))
+
+# Make rows and columns match order in metadata
+jsd <- jsd[meta$sample_id, meta$sample_id]
+
+```
+
+Next, I'll keep only throat, gastric, and lung samples.
+
+Note: this will end up having some within-patient comparisons, I'm pretty sure. Not sure how to deal with this...
+
+```{r}
+sites <- c("bal", "throat_swab", "gastric_fluid")
+
+keep_samples <- meta %>% filter(site %in% sites) %>% select(sample_id)
+subjsd <- jsd[keep_samples$sample_id, keep_samples$sample_id]
+# Not sure if this next step is necessary, since I'm assuming no re-ordering of samples was done?
+submeta <- meta[match(keep_samples$sample_id, meta$sample_id), ]
+
+cat("jsd: ", c(dim(jsd), "; subset jsd: ", dim(subjsd)), "\nmetadata: ", dim(meta), "; subset metadata: ", dim(submeta))
+```
+
+## Permdisp: dispersions
+
+Now that we have our data all sorted, let's try running PERMDISP!
+
+```{r}
+# First make the betadisper object
+betadisper(as.dist(subjsd), submeta$site)
+permdispres <- betadisper(as.dist(subjsd), submeta$site)
+```
+
+```{r}
+# Plot some things it returns
+plot(permdispres)
+boxplot(permdispres)
+```
+```{r}
+# Save boxplot of dispersions
+
+png(file="dispersions.png")
+boxplot(permdispres)
+dev.off()
+```
+
+```{r}
+# And finally, test for significance
+permutest(permdispres)
+permdispres.hsd <- TukeyHSD(permdispres)
+permdispres.hsd
+```
+
+From these results, it seems that data from all three communities is inconsistent with them having the same dispersion. It seems that gastric fluid and lung communities are slightly less different from each other (as we also saw from the beta diversity plots).
+
+The most interesting takeaway, however, is that lungs and gastric fluid seem to be more dispersed than the throat swab (larger distance to centroid, as shown in the boxplot above).
+
+## Permanova: what about centroids?
+
+I think the adonis function does this, though not 100% sure on how to call it.
+
+```{r}
+permanovares <- adonis(as.dist(subjsd) ~ submeta$site)
+permanovares$aov.tab
+```
+
+Hm, not sure if this is correct... let's try one pairwise comparison I guess and see if it makes sense?
+
+```{r}
+# Do PERMANOVA between bal and gastric fluid
+sites <- c("bal", "gastric_fluid")
+keep_samples <- meta %>% filter(site %in% sites) %>% select(sample_id)
+balgasjsd <- jsd[keep_samples$sample_id, keep_samples$sample_id]
+balgasmeta <- meta[match(keep_samples$sample_id, meta$sample_id), ]
+balgaspermanova <- adonis(as.dist(balgasjsd) ~ balgasmeta$site)
+balgaspermanova$aov.tab
+```
+
+Eh, these results are different - but again, not sure how to interpret them. These seem less useful than the permdisp results, above! (Mostly because that one has a post-hoc test available, whereas this one does not seem to have one...)
+
+**Is there a different way to check for homogeneity of centroids?**
+
+## Try adonis with different contrast
+
+```{r}
+permanovares <- adonis(as.dist(subjsd) ~ submeta$site, contr.unordered="contr.helmert")
+permanovares$aov.tab
+```
+
+## Some last notes
+
+Before this is publication-worthy, I need to:
+
+- re-do the analysis for the two sequencing batches separately and see if this changes the results significantly. If not, then I think just presenting them all together is probably fine. If it does, however, then I'll need to think a bit harder... (Maybe just pick the larger of the two studies)   
+- make sure that no patients have two of the same site included here (this will be the case for some of the gastric and throat samples for sure!)   
