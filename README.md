@@ -4,6 +4,12 @@ Analyses, files, and figures accompanying Duvallet et al (2018)'s paper "The oro
 
 The OTU tables and metadata used in these analyses are available upon request, and are not included in the public version of this repo.
 
+For most users, what you want will be in the `src/figures/` and `src/tables/` folders.
+These contain the notebooks I used to generate the figures and tables in the paper.
+You can view the iPython notebooks directly in github, or download the associated html's to view them that way.
+If there are discrepancies between the html and notebooks, the html's have the most up-to-date results.
+`src/analysis` may also be of interest: it contains the raw scripts I used for most analyses (e.g. JSD, classifiers, exchanged OTU definition, etc).
+
 # Directory structure
 
 The structure of this repo follows loosely follows [Cookie Cutter Data Science](https://drivendata.github.io/cookiecutter-data-science/)'s recommended structure.
