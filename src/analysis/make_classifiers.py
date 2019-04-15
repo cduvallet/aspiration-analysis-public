@@ -124,7 +124,18 @@ def make_combined_site_df(tidydf, sites, mbs_col):
                    values='abun')\
             .dropna(axis=0)
 
-    return tmpotu
+    # Keep only OTUs which are non-zero in these samples
+    tmpotu = tmpotu.loc[:, tmpotu.sum() > 0]
+
+    # Also return the samples used in this
+    subjects = tmpotu.index.tolist()
+    samples = tidydf\
+        .query('subject_id == @subjects')\
+        .query('site == @sites')\
+        ['sample']\
+        .unique().tolist()
+
+    return tmpotu, samples
 
 def multi_site_classifier((df, sites, iteration, random_state)):
     """
@@ -209,16 +220,14 @@ def multi_site_classifier((df, sites, iteration, random_state)):
 
     return (summaries, rocs, predictions)
 
-def parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS):
+def parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS):
     """
     Set up the dataframe (once) with corresponding sites.
     Classify and update results.
 
-    Global variables: tidydf, mbs_col, nreps,
+    Global variables: nreps,
     plus all the things multi_site_classifier uses
     """
-    # Convert tidy dataframe to wide form dataframe
-    df = make_combined_site_df(tidydf, sites, mbs_col)
 
     # Set up for parallel processing
     DFS = [df]*nreps
@@ -240,6 +249,18 @@ def parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS):
 
     return (SUMMS, ROCS, PREDS)
 
+def write_samples(sites, out_patients, samples):
+    """
+    Write the list of samples to a file.
+
+    sites : list of str
+    out_patients : str, with stem of file name
+    samples : list of str, sample IDs
+    """
+    fname = '.'.join([out_patients, '_'.join(sites), 'samples', 'txt'])
+    with open(fname, 'w') as f:
+        f.write('\n'.join(samples))
+
 p = argparse.ArgumentParser()
 # Input files
 p.add_argument('fnotu', help='Clean OTU table. Samples in rows, OTUs '
@@ -257,6 +278,9 @@ p.add_argument('fnpreds', help='File where to write classifier predictions '
 p.add_argument('--rfreps', help='Number of Random Forest replicates '
     + '[default: %(default)s]', default=100, type=int)
 args = p.parse_args()
+
+# Bad form but oh well: output file for patient lists
+out_patients = 'data/patients/aspiration_classifiers'
 
 print('Reading files... '),
 df = pd.read_csv(args.fnotu, sep='\t', index_col=0)
@@ -284,27 +308,45 @@ PREDS = []
 
 ## Single-site classifiers
 sites = ['bal']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+# Make wide dataframe with the right samples and OTUs
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+# Track samples used in the classifier
+write_samples(sites, out_patients, samples)
+# Set up parallelized code and then classify
+# Note: parallel_setup_and_classify uses some global variables too
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 sites = ['throat_swab']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 sites = ['gastric_fluid']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 ## Two-site classifiers
 sites = ['bal', 'throat_swab']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 sites = ['bal', 'gastric_fluid']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 sites = ['throat_swab', 'gastric_fluid']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 ## All three
 sites = ['bal', 'throat_swab', 'gastric_fluid']
-SUMMS, ROCS, PREDS = parallel_setup_and_classify(sites, SUMMS, ROCS, PREDS)
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
+SUMMS, ROCS, PREDS = parallel_setup_and_classify(df, sites, SUMMS, ROCS, PREDS)
 
 ## Concatenate results dataframes and write
 pd.concat(SUMMS).to_csv(args.fnsummaries, sep='\t', index=False)

@@ -43,7 +43,18 @@ def make_combined_site_df(tidydf, sites, mbs_col):
                    values='abun')\
             .dropna(axis=0)
 
-    return tmpotu
+    # Keep only OTUs which are non-zero in these samples
+    tmpotu = tmpotu.loc[:, tmpotu.sum() > 0]
+
+    # Also return the samples used in this
+    subjects = tmpotu.index.tolist()
+    samples = tidydf\
+        .query('subject_id == @subjects')\
+        .query('site == @sites')\
+        ['sample']\
+        .unique().tolist()
+
+    return tmpotu, samples
 
 def make_concordance_df(tidydf, mbs_col, site1, site2):
     """
@@ -60,6 +71,13 @@ def make_concordance_df(tidydf, mbs_col, site1, site2):
 
     subjs = tmp['subject_id'].unique().tolist()
 
+    # Track the samples
+    samples = tidydf\
+        .query('subject_id == @subjs')\
+        .query('(site == @site1) | (site == @site2)')\
+        ['sample']\
+        .unique().tolist()
+
     ## Make separate BAL and throat dataframes
     df1 = tidydf\
         .query('site == @site1')\
@@ -73,6 +91,14 @@ def make_concordance_df(tidydf, mbs_col, site1, site2):
         .pivot(index='subject_id', columns='otu_w_site',
                values='abun')
 
+    # Note: to adapt this code for classifiers which use more than just
+    # the exchanged OTUs, you would need to remove any OTUs which are
+    # zero in all patients in all sites. Right now, since we're specifically
+    # looking at exchanged OTUs (which were defined a priori), we'll keep
+    # all of them, even if no patients have any of them in any site.
+    # Regardless, this shouldn't affect results except by introducing more
+    # noise into the classifiers...
+
     ## Even though pandas should have done this already, double-make-sure
     ## that rows and columns match
     # Remove site label appended to OTUs
@@ -85,7 +111,7 @@ def make_concordance_df(tidydf, mbs_col, site1, site2):
     # returns 1. Otherwise 0
     concordance = ((df1 > 0) == (df2 > 0)).astype(int)
 
-    return concordance
+    return concordance, samples
 
 def multi_site_classifier((df, sites, iteration, random_state, cls_label)):
     """
@@ -176,35 +202,22 @@ def multi_site_classifier((df, sites, iteration, random_state, cls_label)):
 
     return (summaries, rocs, predictions)
 
-def parallel_setup_and_classify(tidydf, sites, cls_label,
-                                SUMMS, ROCS, PREDS,
-                                concordance=False):
+def parallel_setup_and_classify(df, sites, cls_label,
+                                SUMMS, ROCS, PREDS):
     """
     Set up the dataframe (once) with corresponding sites.
     Classify and update results.
 
     Parameters
     ----------
-    tidydf : pandas DataFrame
+    df : pandas DataFrame
     sites : list of strings
     cls_label : str
     SUMMS, ROCS, PREDS : lists of lists
-    concordance : bool
-        Whether to consider concordance of OTUs across two sites (True)
-        or just concatenate df's and consider each OTU in each site as a
-        separate feature (False, default)
 
     Global variables: mbs_col, nreps,
     plus all the things multi_site_classifier uses
     """
-    # Convert tidy dataframe to wide form dataframe
-    # If 3 sites are given, just concatenate dfs (i.e. consider each OTU
-    # in each site as a different feature). If 2 sites are given, only look
-    # at concordance
-    if concordance:
-        df = make_concordance_df(tidydf, mbs_col, sites[0], sites[1])
-    else:
-        df = make_combined_site_df(tidydf, sites, mbs_col)
 
     # Set up for parallel processing
     DFS = [df]*nreps
@@ -227,6 +240,18 @@ def parallel_setup_and_classify(tidydf, sites, cls_label,
     PREDS += [res[2] for res in results]
 
     return (SUMMS, ROCS, PREDS)
+
+def write_samples(sites, fout_patients, samples):
+    """
+    Write the list of samples to a file.
+
+    sites : list of str
+    fout_patients : str, with stem of file name
+    samples : list of str, sample IDs
+    """
+    fname = '.'.join([fout_patients, '_'.join(sites), 'samples', 'txt'])
+    with open(fname, 'w') as f:
+        f.write('\n'.join(samples))
 
 p = argparse.ArgumentParser()
 # Input files
@@ -265,13 +290,16 @@ mbs_col = 'mbs_consolidated'
 aspdict = {'Normal': 0, 'Aspiration/Penetration': 1}
 sites = util.get_sites()
 
+# Bad form but oh well: output file for patient lists
+out_patients = 'data/patients/aspiration_classifiers_exchanged_OTUs'
+
 ## Prepare the data for easy manipulations
 # This creates a 3-column df with ['sample', 'otu_w_site', 'abun']
 meta = meta.dropna(subset=[mbs_col])
 # All-caps tidydf doesn't change
 TIDYDF = util.tidyfy_otu(df, meta, mbs_col)
 
-## If we're doing the exchanged OTUs only, prepare that dataframe too
+## Since we're doing the exchanged OTUs only, prepare that dataframe too
 exch = pd.read_csv(args.fnexchange, sep='\t')
 # Remove all extra info, like prevalence
 exch = exch[["otu", "site_comparison"]].drop_duplicates()
@@ -281,75 +309,101 @@ SUMMS = []
 ROCS = []
 PREDS = []
 
-## Classifiers based on BAL-throat OTUs
+##########################################
+## Classifiers based on BAL-throat OTUs ##
+##########################################
 keepotus = exch.query('site_comparison == "bal-throat_swab"')['otu'].tolist()
 tidydf = TIDYDF.query("otu == @keepotus")
 
-# Abundance-based classifiers
+## Abundance-based classifiers
 cls_label = 'abundance'
 sites = ['bal']
+
+# Make wide dataframe with the right samples and OTUs
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+# Track samples used in the classifier
+write_samples(sites, out_patients, samples)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['throat_swab']
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['bal', 'throat_swab']
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
-# Presence-based classifiers
+## Presence-based classifiers
+# No need to re-track samples, since they're the same ones as above
 tidydf.loc[:, 'abun'] = (tidydf['abun'] > 0).astype(int)
 cls_label = 'presence'
 
 sites = ['bal']
+df, _ = make_combined_site_df(tidydf, sites, mbs_col)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['throat_swab']
+df, _ = make_combined_site_df(tidydf, sites, mbs_col)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['bal', 'throat_swab']
+# With the two-site presence/absence classifier, look at the concordance
+df, _ = make_concordance_df(tidydf, mbs_col, sites[0], sites[1])
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS,
-    concordance=True)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
-## Classifiers based on BAL-gastric OTUs
+
+###########################################
+## Classifiers based on BAL-gastric OTUs ##
+###########################################
 keepotus = exch.query('site_comparison == "bal-gastric_fluid"')['otu'].tolist()
 tidydf = TIDYDF.query("otu == @keepotus")
 
 # Abundance-based classifiers
 cls_label = 'abundance'
 sites = ['bal']
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['gastric_fluid']
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['bal', 'gastric_fluid']
+df, samples = make_combined_site_df(tidydf, sites, mbs_col)
+write_samples(sites, out_patients, samples)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 # Presence-based classifiers
 tidydf.loc[:, 'abun'] = (tidydf['abun'] > 0).astype(int)
 cls_label = 'presence'
 
 sites = ['bal']
+df, _ = make_combined_site_df(tidydf, sites, mbs_col)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['gastric_fluid']
+df, _ = make_combined_site_df(tidydf, sites, mbs_col)
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 sites = ['bal', 'gastric_fluid']
+df, _ = make_concordance_df(tidydf, mbs_col, sites[0], sites[1])
 SUMMS, ROCS, PREDS = parallel_setup_and_classify(
-    tidydf, sites, cls_label, SUMMS, ROCS, PREDS,
-    concordance=True)
+    df, sites, cls_label, SUMMS, ROCS, PREDS)
 
 ## Concatenate results dataframes and write
 pd.concat(SUMMS).to_csv(args.fnsummaries, sep='\t', index=False)

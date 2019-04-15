@@ -140,6 +140,11 @@ if __name__ == "__main__":
     p.add_argument('--shuffle', action='store_true')
     args = p.parse_args()
 
+    # Set random state, so that calls to permutations, etc
+    # return the same permutations across different runs of
+    # this script
+    np.random.seed(12345)
+
     ## Read in OTU table and metadata
     df = pd.read_csv(args.fn_otu, sep='\t', index_col=0)
     meta = pd.read_csv(args.fn_meta, sep='\t', index_col=0)

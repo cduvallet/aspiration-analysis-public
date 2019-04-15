@@ -128,7 +128,7 @@ def compare_otus_teststat(df, Xsmpls, Ysmpls, method='kruskal-wallis', multi_com
     results = pd.DataFrame(index=df.columns, columns=['test-stat', 'p'])
     for o in df.columns:
         try:
-            h, p = pfun(df.loc[Xsmpls, o], df.loc[Ysmpls, o])
+            h, p = pfun(df.loc[Xsmpls, o].tolist(), df.loc[Ysmpls, o].tolist())
         except:
             p = 1
             h = 0
@@ -349,6 +349,9 @@ def tidyfy_otu(df, meta, mbscol, cols=None):
     """
     Turn OTU table into a tidy dataframe with subject, sample ID, site, OTU,
     OTU labeled with the site, abundance, and aspiration status.
+
+    This script also removes some unwanted samples (e.g. second time point,
+    lung transplant samples)
 
     To make our OTU-based classifiers (after tidyfying), we will:
     1. Query tidyotu for the site(s) of interest and drop any samples

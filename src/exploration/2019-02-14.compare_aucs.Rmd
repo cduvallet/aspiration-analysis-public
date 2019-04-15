@@ -1,0 +1,53 @@
+---
+title: "Compare aspiration classifier AUCs"
+author: "Claire Duvallet"
+date: "2/14/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(pROC)
+```
+
+### Read in results
+
+```{r}
+fcls = '../../data/analysis/rf_results.predictions.txt'
+df <- read.csv(fcls, sep="\t")
+head(df)
+```
+
+
+```{r}
+sites <- as.vector(unique(df[["site"]]))
+#class(sites)
+sites[(1+1):length(sites)]
+```
+
+```{r}
+sites <- as.vector(unique(df[["site"]]))
+
+for (s1 in sites){
+  ix <- match(s1, sites)
+  # Get first dataframe and ROC
+  cls1 <- df %>% filter(site == s1)
+  roc1 <- roc(response=cls1[['true_label']], predictor=cls1[['prob_class_1']])
+  
+  # Iterate over second site
+  if (ix < length(sites)){
+    for (s2 in sites[(ix+1):length(sites)]){
+      # Get second dataframe and ROC
+      cls2 <- df %>% filter(site == s2)
+      roc2 <- roc(response=cls2[['true_label']], predictor=cls2[['prob_class_1']])
+      
+      # Print the test
+      print(paste0(s1, s2))
+      print(roc.test(roc1, roc2))
+    }
+  }
+}
+```
+

@@ -110,6 +110,30 @@ if __name__ == "__main__":
 
     df, abundf, meta = read_rosen_data(
         args.fnotu, args.fnmeta, args.samplereads)
+
+    # Remove samples we want to exclude in all downstream analyses
+    samples = df.index.tolist()
+
+    ## Samples from second time point or lung transplants
+    exclude = ['2', 'F', 'sick', 'F2T']
+    for s in exclude:
+        samples = [i for i in samples if not i.endswith(s)]
+
+    ## Lung transplant samples
+    samples = [i for i in samples if not i.startswith('05')]
+    samples = [i for i in samples if not i.startswith('dup05')]
+    samples = [i for i in samples if '15-169-4' not in i]
+
+    ## Also, these two patients only had rectal swab samples.
+    ## This isn't great practice cuz it's so after-the fact, but
+    ## let's remove them here anyway.
+    samples = [i for i in samples if '01-297-3' not in i]
+    samples = [i for i in samples if '01-299-8' not in i]
+
+    df = df.loc[samples]
+    abundf = abundf.loc[samples]
+    meta = meta.loc[samples]
+
     df.to_csv(args.fnotu_out, sep='\t')
     abundf.to_csv(args.fnabun_out, sep='\t')
     meta.to_csv(args.fnmeta_out, sep='\t')

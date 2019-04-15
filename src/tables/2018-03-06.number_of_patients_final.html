@@ -12483,9 +12483,349 @@ dtype: int64
 </div>
 
 </div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="PPI-information">PPI information<a class="anchor-link" href="#PPI-information">&#182;</a></h1>
+</div>
+</div>
+</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="n">sra</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;../../final/patients/biosample_attributes.SUB3758953.txt&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">sra</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+<div class="prompt output_prompt">Out[13]:</div>
+
+
+<div class="output_html rendered_html output_subarea output_execute_result">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>organism</th>
+      <th>env_biome</th>
+      <th>geo_loc_name</th>
+      <th>host</th>
+      <th>lat_lon</th>
+      <th>collection_date</th>
+      <th>sample_name</th>
+      <th>subject_id</th>
+      <th>sequencing_date</th>
+      <th>env_feature</th>
+      <th>env_material</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>human-associated metagenome</td>
+      <td>human-associated habitat</td>
+      <td>USA: Boston</td>
+      <td>Homo sapiens</td>
+      <td>missing</td>
+      <td>missing</td>
+      <td>04-074-1T</td>
+      <td>04-074-1</td>
+      <td>2014</td>
+      <td>oropharynx</td>
+      <td>oropharyngeal_swab</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>human-associated metagenome</td>
+      <td>human-associated habitat</td>
+      <td>USA: Boston</td>
+      <td>Homo sapiens</td>
+      <td>missing</td>
+      <td>missing</td>
+      <td>02-164-1G</td>
+      <td>02-164-1</td>
+      <td>2014</td>
+      <td>stomach</td>
+      <td>gastric_fluid</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>human-associated metagenome</td>
+      <td>human-associated habitat</td>
+      <td>USA: Boston</td>
+      <td>Homo sapiens</td>
+      <td>missing</td>
+      <td>missing</td>
+      <td>04-262-5T</td>
+      <td>04-262-5</td>
+      <td>2016</td>
+      <td>oropharynx</td>
+      <td>oropharyngeal_swab</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>human-associated metagenome</td>
+      <td>human-associated habitat</td>
+      <td>USA: Boston</td>
+      <td>Homo sapiens</td>
+      <td>missing</td>
+      <td>missing</td>
+      <td>04-074-1G</td>
+      <td>04-074-1</td>
+      <td>2014</td>
+      <td>stomach</td>
+      <td>gastric_fluid</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>human-associated metagenome</td>
+      <td>human-associated habitat</td>
+      <td>USA: Boston</td>
+      <td>Homo sapiens</td>
+      <td>missing</td>
+      <td>missing</td>
+      <td>04-074-1B</td>
+      <td>04-074-1</td>
+      <td>2014</td>
+      <td>lung</td>
+      <td>bronchoalveolar_lavage</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="n">sra</span><span class="p">[</span><span class="s1">&#39;subject_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+<div class="prompt output_prompt">Out[14]:</div>
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>(222,)</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="n">subjects</span> <span class="o">=</span> <span class="n">sra</span><span class="p">[</span><span class="s1">&#39;subject_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="n">meta</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;subject_id == @subjects&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;subject_id&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;ppi_consolidated&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+<div class="prompt output_prompt">Out[16]:</div>
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>ppi_consolidated
+conflicting     8
+nan            30
+off            88
+on             96
+dtype: int64</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="c1">#&#39;, &#39;.join(meta.query(&#39;subject_id == @subjects&#39;).drop_duplicates(subset=&#39;subject_id&#39;).query(&#39;ppi_consolidated == &quot;conflicting&quot;&#39;)[&#39;subject_id&#39;].tolist())</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="c1">#&#39;, &#39;.join(meta.query(&#39;subject_id == @subjects&#39;).drop_duplicates(subset=&#39;subject_id&#39;).query(&#39;ppi_consolidated == &quot;nan&quot;&#39;)[&#39;subject_id&#39;].tolist())</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;../../final/patients/all_patients_in_sra.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sra</span><span class="p">[</span><span class="s1">&#39;subject_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Number-with-swallow-study">Number with swallow study<a class="anchor-link" href="#Number-with-swallow-study">&#182;</a></h1><p>Of the 222 patients, XX had swallow studies.</p>
+<p>Of the XX that had swallow studies, X were aspirators and X had normal swallow function.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="n">subjects</span> <span class="o">=</span> <span class="n">sra</span><span class="p">[</span><span class="s1">&#39;subject_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="k">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">subjects</span><span class="p">))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+<div class="prompt"></div>
+
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>222
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span></span><span class="n">meta</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;subject_id == @subjects&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;subject_id&#39;</span><span class="p">,</span> <span class="s1">&#39;mbs_consolidated&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;mbs_consolidated&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+<div class="prompt output_prompt">Out[21]:</div>
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>mbs_consolidated
+Aspiration/Penetration     47
+Normal                     57
+nan                       118
+dtype: int64</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span></span> 
