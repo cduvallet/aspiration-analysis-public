@@ -1,0 +1,13 @@
+name: aspiration
+channels:
+    - anaconda
+dependencies:
+    - python=2.7
+    - statsmodels
+    - pandas
+    - numpy
+    - scipy
+    - matplotlib
+    - scikit-bio
+    - scikit-learn<=0.18.0
+    - seaborn
